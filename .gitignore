@@ -1,2 +1,12 @@
+# rust
 /target
 **/*.rs.bk
+
+# IDE
+*.code-workspace
+
+# OS
+.DS_Store
+
+# notes
+TODO.md
