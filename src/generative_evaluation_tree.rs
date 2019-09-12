@@ -1,29 +1,39 @@
 use std::fmt::Debug;
+use std::hash::Hash;
 
-pub struct GenerativeEvaluationTree<T> where T: GenerativeEvaluationTreeNode<T> + Debug {
+pub struct GenerativeEvaluationTree<T,V> 
+    where T: GenerativeEvaluationTreeNode<T,V> + Debug,
+          V: PartialEq + Debug {
+
     root_node: T,
     tree_path: Vec<T>,
     max_depth: usize,
-    search_completed: bool
+    search_completed: bool,
+    maybe_early_stopping_value: Option<V>
 }
 
-impl <T> GenerativeEvaluationTree<T> where T: GenerativeEvaluationTreeNode<T> + Debug {
+impl <T,V> GenerativeEvaluationTree<T,V>
+    where T: GenerativeEvaluationTreeNode<T,V> + Debug,
+          V: PartialEq + Debug {
+
     pub fn new(
         root_node: T,
-        max_depth: usize
-    ) -> GenerativeEvaluationTree<T> {
+        max_depth: usize,
+        maybe_early_stopping_value: Option<V>
+    ) -> GenerativeEvaluationTree<T,V> {
 
         GenerativeEvaluationTree {
             root_node,
             tree_path: Vec::new(),
             max_depth,
-            search_completed: false
+            search_completed: false,
+            maybe_early_stopping_value
         }
     }
 
     pub fn search(&mut self) -> Vec<&T> {
         while !self.search_completed {
-            self.evaluate_next();
+            self.next();
         }
 
         let mut full_path = vec![&self.root_node];
@@ -33,11 +43,15 @@ impl <T> GenerativeEvaluationTree<T> where T: GenerativeEvaluationTreeNode<T> + 
         full_path
     }
 
-    fn evaluate_next(&mut self) {
+    fn next(&mut self) {
+        // println!("node {:?}", self.tree_path.last());
         if self.tree_path.is_empty() {
             match self.root_node.request_next_child() {
                 Some(child) => self.tree_path.push(child),
-                None => self.search_completed = true
+                None => {
+                    self.root_node.on_children_completed();
+                    self.search_completed = true
+                }
             }
         } else {
             let path_length = self.tree_path.len();
@@ -46,19 +60,19 @@ impl <T> GenerativeEvaluationTree<T> where T: GenerativeEvaluationTreeNode<T> + 
             if path_length < self.max_depth {
                 match tail_node.request_next_child() {
                     Some(child) => self.tree_path.push(child),
-                    None => self.evaluate_and_prune()
+                    None => self.prune()
                 }
             } else {
-                self.evaluate_and_prune();
+                self.prune();
             }
         }
     }
 
-    fn evaluate_and_prune(&mut self) {
+    fn prune(&mut self) {
         let maybe_node_to_prune = self.tree_path.pop();
         if let Some(mut node_to_prune) = maybe_node_to_prune {
-            let abort_early = node_to_prune.evaluate();
-            if abort_early {
+            let node_value = node_to_prune.on_children_completed();
+            if self.should_stop_early(&node_value) {
                 self.search_completed = true;
             } else {
                 if self.tree_path.is_empty() {
@@ -69,12 +83,19 @@ impl <T> GenerativeEvaluationTree<T> where T: GenerativeEvaluationTreeNode<T> + 
             }
         }
     }
+
+    fn should_stop_early(&self, node_value: &V) -> bool {
+        match &self.maybe_early_stopping_value {
+            Some(early_stopping_value) => *early_stopping_value == *node_value,
+            None => false
+        }
+    }
 }
 
-pub trait GenerativeEvaluationTreeNode<T> {
+pub trait GenerativeEvaluationTreeNode<T,V> {
     fn on_child_pruned(&mut self, child: T);
     fn request_next_child(&self) -> Option<T>;
-    fn evaluate(&mut self) -> bool;
+    fn on_children_completed(&mut self) -> V;
 }
 
 mod tests {
@@ -97,7 +118,7 @@ mod tests {
     }
 
 
-    impl GenerativeEvaluationTreeNode<DummyNode> for DummyNode {
+    impl GenerativeEvaluationTreeNode<DummyNode,u32> for DummyNode {
         fn on_child_pruned(&mut self, child: DummyNode) {
             self.next_child += 1;
             if child.max_child_value > self.max_child_value {
@@ -120,11 +141,11 @@ mod tests {
             }
         }
 
-        fn evaluate(&mut self) -> bool {
+        fn on_children_completed(&mut self) -> u32 {
             if self.next_child == 0 {
                 self.max_child_value = self.id;
             }
-            false
+            self.max_child_value
         }
     }
 
@@ -132,7 +153,8 @@ mod tests {
     fn test_new_tree() {
         let new_tree = GenerativeEvaluationTree::new(
             DummyNode::new(1),
-            2
+            2,
+            None
         );
 
         assert_eq!(true, new_tree.tree_path.is_empty());
@@ -145,7 +167,8 @@ mod tests {
     fn test_my_tree_search() {
         let mut new_tree = GenerativeEvaluationTree::new(
             DummyNode::new(1),
-            2
+            2,
+            None
         );
 
         let search_results = new_tree.search();
