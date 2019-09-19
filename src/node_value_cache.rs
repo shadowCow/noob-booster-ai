@@ -1,27 +1,51 @@
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::fmt::Debug;
 
-pub trait NodeValueService<T,V> {
+pub trait NodeValueCache<T,V> where V: Debug {
     fn save_value(&mut self, node: &T, value: V);
     fn get_value(&self, node: &T) -> Option<&V>;
+    fn size(&self) -> usize;
 }
 
-pub struct InMemoryNodeValueService<T,K,V> where K: Eq + Hash {
+#[derive(Debug)]
+pub struct NoOpCache {}
+
+impl <T,V> NodeValueCache<T,V> for NoOpCache where V: Debug {
+    fn save_value(&mut self, node: &T, value: V) {}
+    fn get_value(&self, node: &T) -> Option<&V> { None }
+    fn size(&self) -> usize { 0 }
+}
+
+pub struct InMemoryNodeValueCache<T,K,V>
+    where K: Eq + Hash + Debug,
+          V: Debug {
     value_map: HashMap<K,V>,
     get_key_for_node: fn(&T) -> K
 }
 
-impl <T,K,V> InMemoryNodeValueService<T,K,V> where K: Eq + Hash {
-    fn new(get_key_for_node: fn(&T) -> K) -> InMemoryNodeValueService<T,K,V> {
-        InMemoryNodeValueService {
+impl <T,K,V> Debug for InMemoryNodeValueCache<T,K,V>
+    where K: Eq + Hash + Debug,
+          V: Debug {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.value_map.fmt(formatter)
+    }
+}
+
+impl <T,K,V> InMemoryNodeValueCache<T,K,V>
+    where K: Eq + Hash + Debug,
+          V: Debug {
+    pub fn new(get_key_for_node: fn(&T) -> K) -> InMemoryNodeValueCache<T,K,V> {
+        InMemoryNodeValueCache {
             value_map: HashMap::new(),
             get_key_for_node
         }
     }
 }
 
-impl <T,K,V> NodeValueService<T,V> for InMemoryNodeValueService<T,K,V> 
-    where K: Eq + Hash {
+impl <T,K,V> NodeValueCache<T,V> for InMemoryNodeValueCache<T,K,V> 
+    where K: Eq + Hash + Debug, 
+          V: Debug {
 
     fn save_value(&mut self, node: &T, value: V) {
         let key = (self.get_key_for_node)(node);
@@ -31,6 +55,10 @@ impl <T,K,V> NodeValueService<T,V> for InMemoryNodeValueService<T,K,V>
     fn get_value(&self, node: &T) -> Option<&V> {
         let key = (self.get_key_for_node)(node);
         self.value_map.get(&key)
+    }
+
+    fn size(&self) -> usize {
+        self.value_map.len()
     }
 }
 
@@ -49,7 +77,7 @@ mod tests {
     #[test]
     fn test_in_memory_node_value_service() {
 
-        let mut service = InMemoryNodeValueService::<DummyNode, u32, f64>::new(dummy_get_key_for_node);
+        let mut service = InMemoryNodeValueCache::<DummyNode, u32, f64>::new(dummy_get_key_for_node);
 
         let (node,v) = (DummyNode { id: 1 }, 0.6);
         

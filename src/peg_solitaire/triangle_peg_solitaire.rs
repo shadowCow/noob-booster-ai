@@ -1,8 +1,9 @@
-use crate::generative_evaluation_tree::GenerativeEvaluationTreeNode;
-use crate::generative_evaluation_tree::GenerativeEvaluationTree;
+use crate::tree::TreeEvaluator;
+use crate::tree::TreeNode;
 use crate::outcomes::BinaryOutcome;
+use crate::node_value_cache::NoOpCache;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct TrianglePegState {
     board: [bool; 15]
 }
@@ -194,7 +195,7 @@ struct TrianglePegAction {
     to: usize
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 struct TrianglePegNode {
     state: TrianglePegState,
     legal_moves: Vec<TrianglePegAction>,
@@ -202,12 +203,12 @@ struct TrianglePegNode {
 }
 
 
-impl GenerativeEvaluationTreeNode<TrianglePegNode, BinaryOutcome> for TrianglePegNode {
-    fn on_child_pruned(&mut self, child: TrianglePegNode) {
+impl TreeNode<TrianglePegNode, BinaryOutcome> for TrianglePegNode {
+    fn on_child_pruned(&mut self, child: TrianglePegNode, child_value: BinaryOutcome) {
         self.move_index += 1;
     }
 
-    fn request_next_child(&self) -> Option<TrianglePegNode> {
+    fn request_next_child(&mut self) -> Option<TrianglePegNode> {
         if self.move_index < self.legal_moves.len() {
             let current_move = self.legal_moves[self.move_index];
             let next_state = self.state.board_after_move(current_move);
@@ -223,7 +224,7 @@ impl GenerativeEvaluationTreeNode<TrianglePegNode, BinaryOutcome> for TrianglePe
         }
     }
 
-    fn on_children_completed(&mut self) -> BinaryOutcome {
+    fn on_all_children_pruned(&mut self) -> BinaryOutcome {
         if self.state.count_pegs() == 1 {
             BinaryOutcome::Win
         } else {
@@ -246,14 +247,17 @@ mod tests {
             move_index: 0
         };
 
-        let mut tree = GenerativeEvaluationTree::<TrianglePegNode, BinaryOutcome>::new(
+        let node_value_cache = NoOpCache {};
+
+        let mut tree = TreeEvaluator::<TrianglePegNode, BinaryOutcome, NoOpCache>::new(
             root_node,
+            node_value_cache,
             100,
             Some(BinaryOutcome::Win)
         );
 
-        let search_results = tree.search();
-        let action_list: Vec<&TrianglePegAction> = search_results.iter().map(|x| {
+        tree.search();
+        let action_list: Vec<&TrianglePegAction> = tree.get_tree_path().iter().map(|x| {
             &x.legal_moves[x.move_index]
         }).collect();
         

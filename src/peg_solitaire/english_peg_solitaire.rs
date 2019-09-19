@@ -1,8 +1,10 @@
-use crate::generative_evaluation_tree::GenerativeEvaluationTreeNode;
-use crate::generative_evaluation_tree::GenerativeEvaluationTree;
+use crate::tree::TreeEvaluator;
+use crate::tree::TreeNode;
 use crate::outcomes::BinaryOutcome;
+use crate::node_value_cache::InMemoryNodeValueCache;
 
 type Board = [bool; 33];
+#[derive(Clone)]
 struct EnglishPegState {
     board: Board
 }
@@ -12,6 +14,12 @@ impl EnglishPegState {
         EnglishPegState {
             board: make_starting_board()
         }
+    }
+}
+
+impl PartialEq for EnglishPegState {
+    fn eq(&self, other: &Self) -> bool {
+        self.board[..] == other.board[..]
     }
 }
 
@@ -191,25 +199,22 @@ struct EnglishPegMove {
     to: usize
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 struct EnglishPegNode {
     state: EnglishPegState,
     legal_moves: Vec<EnglishPegMove>,
-    move_index: usize
+    move_index: usize,
+    all_children_lose: bool
 }
 
-enum Outcome {
-    Win,
-    Lose
-}
 
-impl GenerativeEvaluationTreeNode<EnglishPegNode, BinaryOutcome> for EnglishPegNode {
-    fn on_child_pruned(&mut self, child: EnglishPegNode) {
+impl TreeNode<EnglishPegNode, BinaryOutcome> for EnglishPegNode {
+    fn on_child_pruned(&mut self, child: EnglishPegNode, child_value: BinaryOutcome) {
+        self.all_children_lose = self.all_children_lose && child_value == BinaryOutcome::Lose;
         self.move_index += 1;
     }
 
-    fn request_next_child(&self) -> Option<EnglishPegNode> {
-        // TODO - if this node value is already computed, return None.
+    fn request_next_child(&mut self) -> Option<EnglishPegNode> {
         if self.move_index < self.legal_moves.len() {
             let current_move = self.legal_moves[self.move_index];
             let next_board = board_after_move(&self.state.board, current_move);
@@ -221,16 +226,16 @@ impl GenerativeEvaluationTreeNode<EnglishPegNode, BinaryOutcome> for EnglishPegN
             Some(EnglishPegNode {
                 state: next_state,
                 legal_moves: next_legal_moves,
-                move_index: 0
+                move_index: 0,
+                all_children_lose: true
             })
         } else {
             None
         }
     }
 
-    fn on_children_completed(&mut self) -> BinaryOutcome {
-        // TODO - if know the value of this state, put it in the value service
-        if count_pegs(&self.state.board) == 1 {
+    fn on_all_children_pruned(&mut self) -> BinaryOutcome {
+        if count_pegs(&self.state.board) == 1 || !self.all_children_lose {
             BinaryOutcome::Win
         } else {
             BinaryOutcome::Lose
@@ -241,29 +246,45 @@ impl GenerativeEvaluationTreeNode<EnglishPegNode, BinaryOutcome> for EnglishPegN
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_english_peg_search() {
-        let state = EnglishPegState::new();
-        let legal_moves = get_legal_moves(&state.board);
-
-        let root_node = EnglishPegNode {
-            state,
-            legal_moves,
-            move_index: 0
-        };
-
-        let mut tree = GenerativeEvaluationTree::<EnglishPegNode, BinaryOutcome>::new(
-            root_node,
-            100,
-            Some(BinaryOutcome::Win)
-        );
-
-        let search_results = tree.search();
-        let action_list: Vec<&EnglishPegMove> = search_results.iter().map(|x| {
-            &x.legal_moves[x.move_index]
-        }).collect();
-
-        println!("action list {:?}", action_list);
+    fn get_key_for_node(node: &EnglishPegNode) -> String {
+        node.state.board.iter().map(|x| {
+            if *x {
+                '1'
+            } else {
+                '0'
+            }
+        }).collect()
     }
+
+    // #[test]
+    // fn test_english_peg_search() {
+    //     let state = EnglishPegState::new();
+    //     let legal_moves = get_legal_moves(&state.board);
+
+    //     let root_node = EnglishPegNode {
+    //         state,
+    //         legal_moves,
+    //         move_index: 0,
+    //         all_children_lose: true
+    //     };
+
+    //     let node_value_cache = InMemoryNodeValueCache::new(get_key_for_node);
+
+    //     let mut tree = TreeEvaluator::<EnglishPegNode, BinaryOutcome, InMemoryNodeValueCache<EnglishPegNode, String, BinaryOutcome>>::new(
+    //         root_node,
+    //         node_value_cache,
+    //         100,
+    //         Some(BinaryOutcome::Win)
+    //     );
+
+    //     tree.search_with_max_visits(1000000000, get_key_for_node);
+    //     let action_list: Vec<&EnglishPegMove> = tree.get_tree_path().iter().map(|x| {
+    //         &x.legal_moves[x.move_index]
+    //     }).collect();
+
+    //     //println!("action list {:?}", action_list);
+
+    //     tree.print_cache();
+    // }
 
 }

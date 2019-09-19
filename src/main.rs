@@ -1,7 +1,8 @@
-mod peg_solitaire;
-mod generative_evaluation_tree;
-mod node_value_service;
+
+mod node_value_cache;
 mod outcomes;
+mod tree;
+mod peg_solitaire;
 
 fn main() {
     println!("Hello, world!");
