@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::fmt::Debug;
+use std::cmp::max;
 
 pub trait StateGraph<S, V> 
     where S: Copy {
@@ -14,6 +15,8 @@ pub trait StateGraph<S, V>
 
     fn add_dependent(&mut self, state: &S, dependent: S);
     fn get_dependents(&self, state: &S) -> Option<&Vec<S>>;
+
+    fn get_terminal_states(&self) -> Vec<S>;
 
     fn set_value(&mut self, state: &S, value: V);
     fn get_value(&self, state: &S) -> Option<&V>;
@@ -74,6 +77,44 @@ impl <S,V> InMemoryStateGraph<S,V>
 
         graph
     }
+
+    fn compute_values(
+        &mut self,
+        k: fn(&S, &dyn StateGraph<S,V>) -> Option<V>,
+    ) {
+        /*
+        ok, what we want to do here is fill in from the bottom,
+        one layer at a time
+
+        so we go through the bottom layer, fill in those values,
+        build a list of 'the next layer'
+
+        then we go through that layer, and do the same
+        */
+
+        let mut states_to_evaluate = VecDeque::from(self.get_terminal_states());
+
+        while let Some(working_state) = states_to_evaluate.pop_front() {
+            match k(&working_state, self) {
+                Some(state_value) => {
+                    self.set_value(&working_state, state_value);
+                    match self.get_dependents(&working_state) {
+                        Some(ds) => {
+                            ds.iter()
+                              .filter(|x| self.get_value(x).is_none())
+                              .for_each(|x| states_to_evaluate.push_back(*x))
+                        },
+                        None => {}
+                    }
+                },
+                None => {
+                    states_to_evaluate.push_back(working_state);
+                }
+            }
+        }
+    }
+        
+
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -149,6 +190,19 @@ impl <S, V> StateGraph<S, V> for InMemoryStateGraph<S, V>
             .map(|x| &x.dependents)
     }
 
+    fn get_terminal_states(&self) -> Vec<S> {
+        self.states
+            .iter()
+            .filter_map(|(k,v)| {
+                if v.value_dependencies.is_empty() {
+                    Some(*k)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     fn set_value(&mut self, state: &S, value: V) {
         let maybe_state_node = self.states.get_mut(&state);
 
@@ -181,14 +235,34 @@ mod tests {
         let l = |s: &u32| {
             match s {
                 1 => vec![2, 3],
-                2 => vec![2, 4, 1],
-                3 => vec![2],
+                2 => vec![4],
+                3 => vec![5],
                 4 => vec![],
+                5 => vec![],
                 _ => vec![],
             }
         };
 
-        let d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, s0);
+        let mut d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, s0);
+
+        println!("{:?}", d_graph);
+
+        let k = |s: &u32, g: &dyn StateGraph<u32, f64>| {
+            match s {
+                1 => {
+                    g.get_value(&2)
+                     .zip(g.get_value(&3))
+                     .map(|(a,b)| a.max(*b))
+                },
+                2 => g.get_value(&4).map(|x| *x),
+                3 => g.get_value(&5).map(|x| *x),
+                4 => Some(1.0),
+                5 => Some(2.0),
+                _ => None
+            }
+        };
+
+        d_graph.compute_values(k);
 
         println!("{:?}", d_graph);
     }
