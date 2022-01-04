@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::cmp::max;
+use std::iter::FromIterator;
 
 pub trait StateGraph<S, V> 
     where S: Copy {
@@ -43,11 +44,11 @@ impl <S,V> InMemoryStateGraph<S,V>
 
     pub fn generate(
         l: fn(&S) -> Vec<S>,
-        s0: &S,
+        initial_states: Vec<S>,
     ) -> InMemoryStateGraph<S,V> {
         let mut graph: InMemoryStateGraph<S,V> = InMemoryStateGraph::new();
 
-        let mut unvisited_states = VecDeque::from(vec![*s0]);
+        let mut unvisited_states: VecDeque<S> = VecDeque::from(initial_states);
 
         while let Some(working_state) = unvisited_states.pop_front() {
             // println!("working_state: {:?}", working_state);
@@ -238,7 +239,7 @@ mod tests {
             }
         };
 
-        let mut d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, &s0);
+        let mut d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, vec![s0]);
 
         println!("{:?}", d_graph);
 

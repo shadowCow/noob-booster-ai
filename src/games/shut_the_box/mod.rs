@@ -269,14 +269,14 @@ impl State {
 }
 
 
-pub fn shut_the_box(initial_state: &State) -> Option<(Action, f64)> {
+pub fn shut_the_box_state_graph() -> InMemoryStateGraph<State, f64> {
     let l = |s: &State| {
         s.reachable_next_states()
     };
 
     let mut d_graph: InMemoryStateGraph<State, f64> = InMemoryStateGraph::generate(
         l,
-        initial_state,
+        State::initial(),
     );
     // println!("graph {:?}", d_graph);
     println!("size {:?}", d_graph.count_states());
@@ -292,7 +292,7 @@ pub fn shut_the_box(initial_state: &State) -> Option<(Action, f64)> {
 
     d_graph.compute_values(k);
 
-    initial_state.best_action(&d_graph)
+    d_graph
 }
 
 fn compute_action_value(
@@ -319,8 +319,6 @@ fn compute_action_value(
 
     value
 }
-
-
 
 
 #[cfg(test)]
@@ -438,21 +436,23 @@ mod tests {
             ],
         };
 
-        let actual_best_action = shut_the_box(&s0);
+        let d_graph = shut_the_box_state_graph();
+
+        let actual_best_action = s0.best_action(&d_graph);
         let expected_best_action = Some((vec![Tile::Four], 8.0));
 
         assert_eq!(actual_best_action, expected_best_action);
     }
 
-    #[test]
-    fn test_thing() {
-        let s0 = State {
-            dice_value: 12,
-            tiles_open: [true; 9],
-        };
+    // #[test]
+    // fn test_thing() {
+    //     let s0 = State {
+    //         dice_value: 12,
+    //         tiles_open: [true; 9],
+    //     };
 
-        let best_action = shut_the_box(&s0);
+    //     let best_action = shut_the_box(&s0);
 
-        println!("best action {:?}", best_action);
-    }
+    //     println!("best action {:?}", best_action);
+    // }
 }
