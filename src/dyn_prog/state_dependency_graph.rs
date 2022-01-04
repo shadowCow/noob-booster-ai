@@ -9,6 +9,7 @@ pub trait StateGraph<S, V>
     where S: Copy {
     fn insert(&mut self, state: S);
     fn contains(&self, state: &S) -> bool;
+    fn count_states(&self) -> usize;
 
     fn add_value_dependency(&mut self, state: &S, dependency: S);
     fn get_value_dependencies(&self, state: &S) -> Option<&Vec<S>>;
@@ -42,16 +43,16 @@ impl <S,V> InMemoryStateGraph<S,V>
 
     pub fn generate(
         l: fn(&S) -> Vec<S>,
-        s0: S,
+        s0: &S,
     ) -> InMemoryStateGraph<S,V> {
         let mut graph: InMemoryStateGraph<S,V> = InMemoryStateGraph::new();
 
-        let mut unvisited_states = VecDeque::from(vec![s0]);
+        let mut unvisited_states = VecDeque::from(vec![*s0]);
 
         while let Some(working_state) = unvisited_states.pop_front() {
-            println!("working_state: {:?}", working_state);
+            // println!("working_state: {:?}", working_state);
             let next_states = l(&working_state);
-            println!("next_states: {:?}", next_states);
+            // println!("next_states: {:?}", next_states);
 
             if !graph.contains(&working_state) {
                 graph.insert(working_state);   
@@ -59,7 +60,7 @@ impl <S,V> InMemoryStateGraph<S,V>
 
             if next_states.is_empty() {
                 // terminal state reached
-                println!("terminal state")
+                // println!("terminal state")
             } else {
                 for n_s in next_states.iter() {
                     graph.add_value_dependency(&working_state, *n_s);
@@ -78,22 +79,12 @@ impl <S,V> InMemoryStateGraph<S,V>
         graph
     }
 
-    fn compute_values(
+    pub fn compute_values(
         &mut self,
         k: fn(&S, &dyn StateGraph<S,V>) -> Option<V>,
     ) {
-        /*
-        ok, what we want to do here is fill in from the bottom,
-        one layer at a time
-
-        so we go through the bottom layer, fill in those values,
-        build a list of 'the next layer'
-
-        then we go through that layer, and do the same
-        */
-
         let mut states_to_evaluate = VecDeque::from(self.get_terminal_states());
-
+        // println!("states_to_evaluate {:?}", states_to_evaluate);
         while let Some(working_state) = states_to_evaluate.pop_front() {
             match k(&working_state, self) {
                 Some(state_value) => {
@@ -151,12 +142,16 @@ impl <S, V> StateGraph<S, V> for InMemoryStateGraph<S, V>
         self.states.contains_key(state)
     }
 
+    fn count_states(&self) -> usize {
+        self.states.len()
+    }
+
     fn add_value_dependency(&mut self, state: &S, dependency: S) {
         let maybe_state_node = self.states.get_mut(&state);
 
         match maybe_state_node {
             Some(state_node) => {
-                println!("adding value dep {:?}, {:?}", state, dependency);
+                // println!("adding value dep {:?}, {:?}", state, dependency);
                 state_node.value_dependencies.push(dependency);
             },
             None => {
@@ -243,7 +238,7 @@ mod tests {
             }
         };
 
-        let mut d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, s0);
+        let mut d_graph: InMemoryStateGraph<u32, f64> = InMemoryStateGraph::generate(l, &s0);
 
         println!("{:?}", d_graph);
 
