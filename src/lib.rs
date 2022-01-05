@@ -4,6 +4,6 @@ mod tree;
 mod peg_solitaire;
 mod min_max;
 mod dyn_prog;
-mod games;
+pub mod games;
 mod dice_utils;
 pub mod analysis_server;

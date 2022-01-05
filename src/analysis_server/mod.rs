@@ -1,6 +1,8 @@
-use actix_web::{Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use futures::future::{ready, Ready};
 use serde::Serialize;
+
+use crate::games::shut_the_box::{ShutTheBoxAnalyst, State};
 
 #[derive(Serialize)]
 struct BestActionResponse {
@@ -24,9 +26,24 @@ impl Responder for BestActionResponse {
     }
 }
 
-pub async fn find_best_action() -> impl Responder {
+pub async fn find_best_action(data: web::Data<ShutTheBoxAnalyst>) -> impl Responder {
+    let state = State::fresh(2);
+    let best_action_with_value = data.find_best_action(
+        &state,
+    );
+    let (best_action, value) = best_action_with_value.unwrap_or((
+        vec![],
+        f64::MAX,
+    ));
+
+    let action: Option<Vec<u8>> = if best_action.is_empty() {
+        None
+    } else {
+        Some(best_action.iter().map(|t| t.score()).collect())
+    };
+    
     BestActionResponse {
-        action: None
+        action,
     }
 }
 

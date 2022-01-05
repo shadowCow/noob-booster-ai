@@ -12,7 +12,7 @@ use crate::dice_utils::{
 
 type Action = Vec<Tile>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Tile {
     One,
     Two,
@@ -232,67 +232,64 @@ impl State {
             })
             .collect()
     }
+}
 
-    pub fn best_action(
-        &self,
-        g: &dyn StateGraph<State,f64>,
-    ) -> Option<(Action, f64)> {
-        let mut best_action: Option<(Action, f64)> = None;
-    
-        for action in self.actions() {
-            let action_value = compute_action_value(
-                self,
-                &action,
-                g,
-            );
-    
-            match action_value {
-                Some(v) => {
-                    let min_a = match best_action {
-                        Some((_, v)) => v,
-                        None => f64::MAX
-                    };
-    
-                    if v < min_a {
-                        best_action = Some((action, v));
-                    }
-                },
-                None => {
-                    best_action = None;
-                    break;
-                }
-            }
+pub struct ShutTheBoxAnalyst {
+    state_graph: InMemoryStateGraph<State, f64>,
+}
+
+impl ShutTheBoxAnalyst {
+    pub fn new() -> ShutTheBoxAnalyst {
+        ShutTheBoxAnalyst {
+            state_graph: shut_the_box_state_graph(),
         }
-    
-        best_action
+    }
+
+    pub fn find_best_action(&self, state: &State) -> Option<(Action, f64)> {
+        find_best_action(state, &self.state_graph)
+    }
+
+    fn compute_action_value(
+        &self,
+        s: &State,
+        a: &Action,
+    ) -> Option<f64> {
+        compute_action_value(s, a, &self.state_graph)
     }
 }
 
+fn find_best_action(
+    state: &State,
+    g: &dyn StateGraph<State,f64>,
+) -> Option<(Action, f64)> {
+    let mut best_action: Option<(Action, f64)> = None;
 
-pub fn shut_the_box_state_graph() -> InMemoryStateGraph<State, f64> {
-    let l = |s: &State| {
-        s.reachable_next_states()
-    };
+    for action in state.actions() {
+        let action_value = compute_action_value(
+            state,
+            &action,
+            g,
+        );
 
-    let mut d_graph: InMemoryStateGraph<State, f64> = InMemoryStateGraph::generate(
-        l,
-        State::initial(),
-    );
-    // println!("graph {:?}", d_graph);
-    println!("size {:?}", d_graph.count_states());
+        match action_value {
+            Some(v) => {
+                let min_a = match best_action {
+                    Some((_, v)) => v,
+                    None => f64::MAX
+                };
 
-    let k = |s: &State, g: &dyn StateGraph<State,f64>| {
-        if s.actions().is_empty() {
-            Some(f64::from(s.score()))
-        } else {
-            s.best_action(g)
-                .map(|(a, v)| v)
+                if v < min_a {
+                    best_action = Some((action, v));
+                }
+            },
+            None => {
+                best_action = None;
+                break;
+            }
         }
-    };
+    }
 
-    d_graph.compute_values(k);
-
-    d_graph
+    best_action
 }
 
 fn compute_action_value(
@@ -320,6 +317,31 @@ fn compute_action_value(
     value
 }
 
+pub fn shut_the_box_state_graph() -> InMemoryStateGraph<State, f64> {
+    let l = |s: &State| {
+        s.reachable_next_states()
+    };
+
+    let mut d_graph: InMemoryStateGraph<State, f64> = InMemoryStateGraph::generate(
+        l,
+        State::initial(),
+    );
+    // println!("graph {:?}", d_graph);
+    println!("size {:?}", d_graph.count_states());
+
+    let k = |s: &State, g: &dyn StateGraph<State,f64>| {
+        if s.actions().is_empty() {
+            Some(f64::from(s.score()))
+        } else {
+            find_best_action(s, g)
+                .map(|(a, v)| v)
+        }
+    };
+
+    d_graph.compute_values(k);
+
+    d_graph
+}
 
 #[cfg(test)]
 mod tests {
@@ -438,7 +460,7 @@ mod tests {
 
         let d_graph = shut_the_box_state_graph();
 
-        let actual_best_action = s0.best_action(&d_graph);
+        let actual_best_action = find_best_action(&s0, &d_graph);
         let expected_best_action = Some((vec![Tile::Four], 8.0));
 
         assert_eq!(actual_best_action, expected_best_action);
