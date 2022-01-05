@@ -1,8 +1,14 @@
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use futures::future::{ready, Ready};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::games::shut_the_box::{ShutTheBoxAnalyst, State};
+
+#[derive(Deserialize)]
+pub struct BestActionRequest {
+    dice_value: u8,
+    tiles_open: [bool; 9],
+}
 
 #[derive(Serialize)]
 struct BestActionResponse {
@@ -26,8 +32,8 @@ impl Responder for BestActionResponse {
     }
 }
 
-pub async fn find_best_action(data: web::Data<ShutTheBoxAnalyst>) -> impl Responder {
-    let state = State::fresh(2);
+pub async fn find_best_action(info: web::Json<BestActionRequest>, data: web::Data<ShutTheBoxAnalyst>) -> impl Responder {
+    let state = State::new(info.dice_value, info.tiles_open);
     let best_action_with_value = data.find_best_action(
         &state,
     );

@@ -11,13 +11,19 @@ async fn main() -> std::io::Result<()> {
     let address = format!("127.0.0.1:{:?}", port);
 
     HttpServer::new(|| {
+        println!("creating analyst...");
+        let analyst = ShutTheBoxAnalyst::new();
+        println!("analyst ready!");
+
+        println!("starting worker...");
         App::new()
             .service(
                 web::scope("/shut-the-box")
-                    .data(ShutTheBoxAnalyst::new())
-                    .route("/find-best-action", web::get().to(find_best_action))
+                    .data(analyst)
+                    .route("/find-best-action", web::post().to(find_best_action))
             )
     })
+    .workers(2)
     .bind(address.to_owned())?
     .run()
     .await

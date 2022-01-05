@@ -140,6 +140,16 @@ pub struct State {
 }
 
 impl State {
+    pub fn new(
+        dice_value: u8,
+        tiles_open: [bool; 9],
+    ) -> State {
+        State {
+            dice_value,
+            tiles_open,
+        }
+    }
+
     pub fn initial() -> Vec<State> {
         let mut states: Vec<State> = vec![];
 
@@ -234,6 +244,7 @@ impl State {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ShutTheBoxAnalyst {
     state_graph: InMemoryStateGraph<State, f64>,
 }
