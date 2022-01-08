@@ -2,6 +2,9 @@
 target/
 **/*.rs.bk
 
+# js
+node_modules/
+
 # IDE
 *.code-workspace
 
