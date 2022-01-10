@@ -3,20 +3,55 @@ pub mod trie;
 use std::collections::VecDeque;
 use trie::WordTrie;
 
-pub struct State4x4 {
-    letter_grid: [char; 16],
+pub enum Direction {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
 }
 
-impl State4x4 {
-    pub fn new(letter_grid: [char; 16]) -> State4x4 {
-        State4x4 {
-            letter_grid,
+impl Direction {
+    pub fn direction_vector(direction: &Direction) -> (i8, i8) {
+        match direction {
+            Direction::North => (0, 1),
+            Direction::NorthEast => (1, 1),
+            Direction::East => (1, 0),
+            Direction::SouthEast => (1, -1),
+            Direction::South => (0, -1),
+            Direction::SouthWest => (-1, -1),
+            Direction::West => (-1, 0),
+            Direction::NorthWest => (-1, 1),
+        }
+    }
+
+    pub fn next_clockwise(direction: &Direction) -> Direction {
+        match direction {
+            Direction::North => Direction::NorthEast,
+            Direction::NorthEast => Direction::East,
+            Direction::East => Direction::SouthEast,
+            Direction::SouthEast => Direction::South,
+            Direction::South => Direction::SouthWest,
+            Direction::SouthWest => Direction::West,
+            Direction::West => Direction::NorthWest,
+            Direction::NorthWest => Direction::North,
         }
     }
 }
 
-pub trait BoggleLikeAnalyst {
-    fn neighbors_of(&self, tile: usize) -> &[usize];
+pub struct State4x4 {
+    letter_grid: [u8; 16],
+}
+
+impl State4x4 {
+    pub fn new(letter_grid: [u8; 16]) -> State4x4 {
+        State4x4 {
+            letter_grid,
+        }
+    }
 }
 
 const TILE_NEIGHBORS_4X4: [usize; 84] = [
@@ -78,6 +113,12 @@ const TILE_NEIGHBORS_4X4_LENGTHS: [usize; 16] = [
     3,
 ];
 
+pub trait BoggleLikeAnalyst {
+    fn neighbors_of(&self, tile: usize) -> &[usize];
+    fn neighbor_in_direction(&self, tile: usize, direction: (i8, i8)) -> Option<usize>;
+    fn next_neighbor_clockwise(&self, tile: usize, direction: &Direction) -> usize;
+}
+
 pub struct State4x4Analyst {
     valid_words: Vec<Vec<usize>>,
 }
@@ -92,7 +133,7 @@ impl State4x4Analyst {
     pub fn find_all_valid_words(
         &mut self,
         state: &State4x4,
-        dictionary: &WordTrie,
+        dictionary: &mut WordTrie,
     ) {
         for cell in 0..state.letter_grid.len() {
             self.find_valid_words_for_cell(
@@ -107,16 +148,45 @@ impl State4x4Analyst {
         &mut self,
         cell: usize,
         state: &State4x4,
-        dictionary: &WordTrie,
+        dictionary: &mut WordTrie,
     ) {
         let mut visited_cells: [bool; 16] = [false; 16];
         visited_cells[cell] = true;
 
-        let mut next_cells: VecDeque<usize> = VecDeque::from(vec![cell]);
-        while let Some(next_cell) = next_cells.pop_front() {
-            
+        let mut path_stack: Vec<usize> = vec![];
+        while !path_stack.is_empty() {
+            // check for word
+            let word: Vec<u8> = path_stack.iter()
+                .map(|i| state.letter_grid[*i])
+                .collect();
+            let search_outcome = dictionary.find(word.as_slice());
+
+            if search_outcome.is_word {
+                let path_copy: Vec<usize> = path_stack.iter()
+                    .map(|i| *i)
+                    .collect();
+                self.valid_words.push(path_copy);
+            }
+
+            // set next path
+            if search_outcome.has_longer_words {
+                // extend stack with next unvisited neighbor
+            } else {
+                // unwind stack to last node with unvisited neighbors
+            }
         }
     }
+
+    // fn next_unvisited_neighbor(
+    //     visited_cells: &[bool; 16],
+    //     current_cell: usize,
+    // ) -> usize {
+    //     let 
+    // }
+
+    // fn backtrack_to_first_unvisited_neighbor(
+        
+    // )
 }
 
 impl BoggleLikeAnalyst for State4x4Analyst {
@@ -125,6 +195,41 @@ impl BoggleLikeAnalyst for State4x4Analyst {
         let end_index = start_index + TILE_NEIGHBORS_4X4_LENGTHS[tile];
 
         &TILE_NEIGHBORS_4X4[start_index .. end_index]
+    }
+    
+    fn neighbor_in_direction(&self, tile: usize, direction: (i8, i8)) -> Option<usize> {
+        let col = tile % 4;
+        let row = tile / 4;
+
+        let target_col = col as i8 + direction.0;
+        let target_row = row as i8 + direction.1;
+
+        if target_col < 0 ||
+           target_row < 0 ||
+           target_col > 3 ||
+           target_row > 3
+        {
+            None
+        } else {
+            let index = (target_row * 4) + target_col;
+            
+            Some(index as usize)
+        }
+    }
+
+    fn next_neighbor_clockwise(&self, tile: usize, direction: &Direction) -> usize {
+        let mut neighbor = self.neighbor_in_direction(
+            tile,
+            Direction::direction_vector(direction),
+        );
+        while neighbor.is_none() {
+            neighbor = self.neighbor_in_direction(
+                tile,
+                Direction::direction_vector(&Direction::next_clockwise(direction)),
+            );
+        }
+
+        neighbor.unwrap()
     }
 }
 
