@@ -152,6 +152,14 @@ mod tests {
         let mut trie = WordTrie::from_words(&words);
 
         assert_eq!(
+            trie.find("a".as_bytes()),
+            TrieSearchOutcome {
+                is_word: true,
+                has_longer_words: true,
+            },
+        );
+
+        assert_eq!(
             trie.find("app".as_bytes()),
             TrieSearchOutcome {
                 is_word: true,
