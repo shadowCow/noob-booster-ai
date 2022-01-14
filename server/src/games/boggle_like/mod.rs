@@ -1,58 +1,119 @@
 pub mod trie;
+pub mod direction;
 
 use std::collections::VecDeque;
-use trie::WordTrie;
+use trie::{WordTrie, TrieSearchOutcome};
+use direction::Direction;
 
-#[derive(Debug, PartialEq)]
-pub enum Direction {
-    North,
-    NorthEast,
-    East,
-    SouthEast,
-    South,
-    SouthWest,
-    West,
-    NorthWest,
+trait LetterGrid {
+    fn get_cell_value(&self, col: usize, row: usize) -> u8;
+    fn grid_cells(&self) -> Vec<GridCell>;
+    fn neighbor_in_direction(&self, cell: &GridCell, direction: Direction) -> Option<GridCell>;
+    fn first_cw_neighbor(&self, from: &GridCell, start_direction: Direction) -> GridCell;
+    fn first_cw_neighbor_between(&self, from: &GridCell, start_exclusive: Direction, end_exclusive: Direction) -> Option<GridCell>;
+    fn direction_to(&self, from: &GridCell, to: &GridCell) -> Option<Direction>;
 }
 
-impl Direction {
-    pub fn direction_vector(direction: &Direction) -> (i8, i8) {
-        match direction {
-            Direction::North => (0, 1),
-            Direction::NorthEast => (1, 1),
-            Direction::East => (1, 0),
-            Direction::SouthEast => (1, -1),
-            Direction::South => (0, -1),
-            Direction::SouthWest => (-1, -1),
-            Direction::West => (-1, 0),
-            Direction::NorthWest => (-1, 1),
+struct LetterGrid4x4 {
+    grid: [u8; 16],
+}
+
+impl LetterGrid4x4 {
+    pub fn new(grid: [u8; 16]) -> LetterGrid4x4 {
+        LetterGrid4x4 {
+            grid,
         }
     }
 
-    pub fn next_clockwise(direction: &Direction) -> Direction {
-        match direction {
-            Direction::North => Direction::NorthEast,
-            Direction::NorthEast => Direction::East,
-            Direction::East => Direction::SouthEast,
-            Direction::SouthEast => Direction::South,
-            Direction::South => Direction::SouthWest,
-            Direction::SouthWest => Direction::West,
-            Direction::West => Direction::NorthWest,
-            Direction::NorthWest => Direction::North,
+    pub fn to_grid_cell(index: usize) -> GridCell {
+        GridCell {
+            col: index % 4,
+            row: index / 4,
         }
     }
 }
 
-pub struct State4x4 {
-    letter_grid: [u8; 16],
-}
+impl LetterGrid for LetterGrid4x4 {
+    
+    fn get_cell_value(&self, col: usize, row: usize) -> u8 {
+        self.grid[(row * 4) + col]
+    }
 
-impl State4x4 {
-    pub fn new(letter_grid: [u8; 16]) -> State4x4 {
-        State4x4 {
-            letter_grid,
+    fn grid_cells(&self) -> Vec<GridCell> {
+        (0..self.grid.len())
+            .map(|x| LetterGrid4x4::to_grid_cell(x))
+            .collect::<Vec<GridCell>>()
+    }
+
+    fn neighbor_in_direction(&self, cell: &GridCell, direction: Direction) -> Option<GridCell> {
+        println!("from: {:?}, towards: {:?}", cell, direction);
+        let (d_col, d_row) = Direction::direction_vector(&direction);
+        println!("vector {:?}", (d_col, d_row));
+        let neighbor_col = cell.col as i8 + d_col;
+        let neighbor_row = cell.row as i8 + d_row;
+
+        println!("neighbor cell {:?}", (neighbor_col, neighbor_row));
+
+        if neighbor_col > -1 && 
+           neighbor_col < 4 &&
+           neighbor_row > -1 &&
+           neighbor_row < 4
+        {
+            println!("valid");
+            Some(GridCell {
+                col: neighbor_col as usize,
+                row: neighbor_row as usize,
+            })
+        } else {
+            println!("invalid");
+            None
         }
     }
+
+    fn first_cw_neighbor(&self, from: &GridCell, start_direction: Direction) -> GridCell {
+        let end_direction = Direction::next_counter_clockwise(&start_direction);
+
+        Direction::directions_between_inclusive_cw(
+            &start_direction,
+            &end_direction,
+        ).into_iter()
+            .map(|d| self.neighbor_in_direction(from, d))
+            .find(|c| c.is_some())
+            .flatten()
+            .unwrap()
+    }
+
+    fn first_cw_neighbor_between(
+        &self,
+        from: &GridCell,
+        start_exclusive: Direction,
+        end_exclusive: Direction,
+    ) -> Option<GridCell> {
+        Direction::directions_between_exclusive_cw(
+            &start_exclusive,
+            &end_exclusive,
+        ).into_iter()
+            .map(|d| self.neighbor_in_direction(from, d))
+            .find(|c| c.is_some())
+            .flatten()
+    }
+
+    fn direction_to(
+        &self,
+        from: &GridCell,
+        to: &GridCell,
+    ) -> Option<Direction> {
+        let dx = to.col as i8 - from.col as i8;
+        let dy = to.row as i8 - from.row as i8;
+
+        Direction::from_direction_vector(&(dx, dy))
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct GridCell {
+    col: usize,
+    row: usize,
 }
 
 const TILE_NEIGHBORS_CW_4X4: [usize; 84] = [
@@ -115,13 +176,24 @@ const TILE_NEIGHBORS_4X4_LENGTHS: [usize; 16] = [
 ];
 
 pub trait BoggleLikeAnalyst {
-    fn neighbors_of(&self, tile: usize) -> &[usize];
-    fn neighbor_in_direction(&self, tile: usize, direction: (i8, i8)) -> Option<usize>;
-    fn next_neighbor_clockwise(&self, tile: usize, direction: &Direction) -> usize;
+    fn find_all_valid_words(
+        &mut self,
+        grid: &dyn LetterGrid,
+        dictionary: &mut WordTrie,
+    );
+
+    fn find_valid_words_starting_with_cell(
+        &mut self,
+        cell: &GridCell,
+        grid: &dyn LetterGrid,
+        dictionary: &mut WordTrie,
+    );
+
+    
 }
 
 pub struct State4x4Analyst {
-    valid_words: Vec<Vec<usize>>,
+    valid_words: Vec<Vec<GridCell>>,
 }
 
 impl State4x4Analyst {
@@ -131,144 +203,132 @@ impl State4x4Analyst {
         }
     }
 
-    pub fn find_all_valid_words(
-        &mut self,
-        state: &State4x4,
+    fn search_for_word_from_path(
+        path_stack: &Vec<GridCell>,
+        letter_grid: &dyn LetterGrid,
         dictionary: &mut WordTrie,
-    ) {
-        for cell in 0..state.letter_grid.len() {
-            println!("root cell: {:?}", cell);
-            self.find_valid_words_for_cell(
-                cell,
-                state,
-                dictionary,
-            );
-        }
+    ) -> TrieSearchOutcome {
+        let word: Vec<u8> = path_stack.iter()
+            .map(|cell| letter_grid.get_cell_value(cell.col, cell.row))
+            .collect();
+        
+        println!("word for path: {:?}", word);
+        
+        dictionary.find(word.as_slice())
     }
 
-    fn find_valid_words_for_cell(
+    fn collect_word(
         &mut self,
-        cell: usize,
-        state: &State4x4,
-        dictionary: &mut WordTrie,
+        path_stack: &Vec<GridCell>,
     ) {
-        let mut visited_cells: [bool; 16] = [false; 16];
-        visited_cells[cell] = true;
-
-        let mut path_stack: Vec<usize> = vec![cell];
-        while !path_stack.is_empty() {
-            println!("current path: {:?}", path_stack);
-            // check for word
-            let word: Vec<u8> = path_stack.iter()
-                .map(|i| state.letter_grid[*i])
-                .collect();
-            println!("word for path: {:?}", word);
-            let search_outcome = dictionary.find(word.as_slice());
-
-            if search_outcome.is_word {
-                println!("is word!");
-                let path_copy: Vec<usize> = path_stack.iter()
-                    .map(|i| *i)
-                    .collect();
-                self.valid_words.push(path_copy);
-            }
-
-            if !search_outcome.has_longer_words {
-                println!("no longer words");
-                let last_cell = path_stack.pop();
-                visited_cells[last_cell.unwrap()] = false;
-            }
-
-            self.next_path(
-                &mut path_stack,
-                &mut visited_cells,
-            );
-        }
+        let path_copy: Vec<GridCell> = path_stack.iter()
+            .map(|i| *i)
+            .collect();
+        self.valid_words.push(path_copy);
     }
 
     fn next_path(
-        &self,
-        path_stack: &mut Vec<usize>,
-        visited_cells: &mut [bool; 16],
+        path_stack: &mut Vec<GridCell>,
+        grid: &dyn LetterGrid,
+        has_longer_words: bool,
     ) {
-        if !path_stack.is_empty() {
-            let mut maybe_next_neighbor = self.neighbors_of(*path_stack.last().unwrap())
-                .iter()
-                .find(|x| !visited_cells[**x]);
-            println!("maybe_next_neighbor: {:?}", maybe_next_neighbor);
-            
-            while !path_stack.is_empty() {
-                match maybe_next_neighbor {
-                    Some(n) => {
-                        path_stack.push(*n);
-                        visited_cells[*n] = true;
-                        break;
-                    },
-                    None => {
-                        // backtrack and try that cell
-                        let last_cell = path_stack.pop();
-                        visited_cells[last_cell.unwrap()] = false;
-                        // this is the problem - we arent tracking visited properly as
-                        // we backtrack.  when we backtrack, we need to go to the
-                        // the next cw unvisited neighbor of the last cell
-                        // so we cant just unvisit this before finding that cell
+        if has_longer_words {
+            State4x4Analyst::next_forward_path(
+                path_stack,
+                grid,
+            );
+        } else {
+            State4x4Analyst::next_backtracked_path(
+                path_stack,
+                grid,
+            );
+        }
+    }
 
-                        if !path_stack.is_empty() {
-                            maybe_next_neighbor = self.neighbors_of(*path_stack.last().unwrap())
-                                .iter()
-                                .find(|x| !visited_cells[**x]);
-                        } else {
-                            maybe_next_neighbor = None;
-                        }
-                    },
-                }    
+    fn next_forward_path(
+        path_stack: &mut Vec<GridCell>,
+        grid: &dyn LetterGrid,
+    ) {
+        let center_cell = path_stack.last().unwrap();
+        let next_cell = grid.first_cw_neighbor(center_cell, Direction::North);
+        println!("next_cell {:?}", next_cell);
+        if !path_stack.contains(&next_cell) {
+            path_stack.push(next_cell);
+        }
+    }
+
+    fn next_backtracked_path(
+        path_stack: &mut Vec<GridCell>,
+        grid: &dyn LetterGrid,
+    ) {
+        let last_cell = path_stack.pop().unwrap();
+
+        if path_stack.is_empty() {
+            ()
+        } else {
+            let center_cell = path_stack.last().unwrap();
+            let start_direction = grid.direction_to(center_cell, &last_cell).unwrap();
+            let maybe_next_cell = grid.first_cw_neighbor_between(
+                center_cell,
+                start_direction,
+                Direction::North,
+            );
+
+            match maybe_next_cell {
+                Some(c) => {
+                    if !path_stack.contains(&c) {
+                        path_stack.push(c);
+                    }
+                },
+                None => {},
             }
         }
     }
 }
 
 impl BoggleLikeAnalyst for State4x4Analyst {
-    fn neighbors_of(&self, tile: usize) -> &[usize] {
-        let start_index = TILE_NEIGHBORS_4X4_OFFSETS[tile];
-        let end_index = start_index + TILE_NEIGHBORS_4X4_LENGTHS[tile];
-
-        &TILE_NEIGHBORS_CW_4X4[start_index .. end_index]
-    }
-    
-    fn neighbor_in_direction(&self, tile: usize, direction: (i8, i8)) -> Option<usize> {
-        let col = tile % 4;
-        let row = tile / 4;
-
-        let target_col = col as i8 + direction.0;
-        let target_row = row as i8 + direction.1;
-
-        if target_col < 0 ||
-           target_row < 0 ||
-           target_col > 3 ||
-           target_row > 3
-        {
-            None
-        } else {
-            let index = (target_row * 4) + target_col;
-            
-            Some(index as usize)
-        }
-    }
-
-    fn next_neighbor_clockwise(&self, tile: usize, direction: &Direction) -> usize {
-        let mut neighbor = self.neighbor_in_direction(
-            tile,
-            Direction::direction_vector(direction),
-        );
-        while neighbor.is_none() {
-            neighbor = self.neighbor_in_direction(
-                tile,
-                Direction::direction_vector(&Direction::next_clockwise(direction)),
+    fn find_all_valid_words(
+        &mut self,
+        grid: &dyn LetterGrid,
+        dictionary: &mut WordTrie,
+    ) {
+        for cell in grid.grid_cells() {
+            println!("root cell: {:?}", cell);
+            self.find_valid_words_starting_with_cell(
+                &cell,
+                grid,
+                dictionary,
             );
         }
-
-        neighbor.unwrap()
     }
+
+    fn find_valid_words_starting_with_cell(
+        &mut self,
+        cell: &GridCell,
+        grid: &dyn LetterGrid,
+        dictionary: &mut WordTrie,
+    ) {
+        let mut path_stack: Vec<GridCell> = vec![*cell];
+        while !path_stack.is_empty() {
+            println!("current path: {:?}", path_stack);
+            let search_outcome = State4x4Analyst::search_for_word_from_path(
+                &path_stack,
+                grid,
+                dictionary,
+            );
+
+            if search_outcome.is_word {
+                println!("is word!");
+                self.collect_word(&path_stack);
+            }
+
+            State4x4Analyst::next_path(
+                &mut path_stack,
+                grid,
+                search_outcome.has_longer_words,
+            );
+        }
+    }    
 }
 
 fn letter_code_from_alphabet_index(index: usize) -> u8 {
@@ -280,23 +340,9 @@ fn letter_code_from_alphabet_index(index: usize) -> u8 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_4x4_neighbors_of() {
-        let analyst = State4x4Analyst::new();
-
-        let n12_expected = &[8, 9, 13];
-        let n12_actual = analyst.neighbors_of(12);
-        assert_eq!(n12_actual, n12_expected);
-
-        let n6_expected = &[2, 3, 7, 11, 10, 9, 5, 1];
-        let n6_actual = analyst.neighbors_of(6);
-        assert_eq!(n6_actual, n6_expected);
-    }
-
-    #[test]
-    fn test_find_all_valid_words() {
-        let state = State4x4 {
-            letter_grid: [
+    fn create_test_letter_grid() -> LetterGrid4x4 {
+        LetterGrid4x4 {
+            grid: [
                 letter_code_from_alphabet_index(0),
                 letter_code_from_alphabet_index(15),
                 letter_code_from_alphabet_index(15),
@@ -314,37 +360,128 @@ mod tests {
                 letter_code_from_alphabet_index(19),
                 letter_code_from_alphabet_index(4),
             ],
-        };
-
-        let mut dictionary = WordTrie::from_words(&[
-            "app",
-            "apple",
-            "let",
-            "egg",
-            "leg",
-            "did",
-            "daze",
-            "tide",
-            "lets",
-            "gel",
-        ]);
-        
-        let result = dictionary.find("app".as_bytes());
-        println!("result is: {:?}", result);
-
-        let mut analyst = State4x4Analyst::new();
-        analyst.find_all_valid_words(&state, &mut dictionary);
-
-        let expected_valid_words: Vec<Vec<usize>> = vec![
-            vec![0, 1, 2], // app
-            vec![0, 1, 2, 3, 7], // apple
-            vec![3, 7, 11], // let
-            vec![3, 7, 11, 10], // lets
-            vec![3, 7, 6], // leg
-            vec![6, 7, 3], // gel
-            vec![7, 6, 5], // egg
-        ];
-        
-        assert_eq!(analyst.valid_words, expected_valid_words);
+        }
     }
+
+    #[test]
+    fn test_neighbor_in_direction() {
+        let letter_grid = create_test_letter_grid();
+
+        let sut: Vec<(Direction, Option<GridCell>)> = vec![
+            (Direction::North, None),
+            (Direction::NorthEast, None),
+            (Direction::East, Some(GridCell { col: 1, row: 0})),
+            (Direction::SouthEast, Some(GridCell { col: 1, row: 1})),
+            (Direction::South, Some(GridCell { col: 0, row: 1})),
+            (Direction::SouthWest, None),
+            (Direction::West, None),
+            (Direction::NorthWest, None),
+        ];
+
+        for (d, expected_neighbor) in sut {
+            let actual_neighbor = letter_grid.neighbor_in_direction(
+                &GridCell { col: 0, row: 0 },
+                d,
+            );
+
+            assert_eq!(actual_neighbor, expected_neighbor);
+        }
+        
+    }
+
+    #[test]
+    fn test_first_cw_neighbor() {
+        let letter_grid = create_test_letter_grid();
+
+        let expected_neighbor = GridCell { col: 1, row: 0 };
+
+        let actual_neighbor = letter_grid.first_cw_neighbor(
+            &GridCell { col: 0, row: 0},
+            Direction::North,
+        );
+
+        assert_eq!(actual_neighbor, expected_neighbor);
+    }
+
+    #[test]
+    fn test_next_forward_path() {
+        let letter_grid = create_test_letter_grid();
+
+        let mut path_stack: Vec<GridCell> = vec![
+            GridCell { col: 0, row: 0 },
+        ];
+
+        let expected_next_path: Vec<GridCell> = vec![
+            GridCell { col: 0, row: 0 },
+            GridCell { col: 1, row: 0 },
+        ];
+
+        State4x4Analyst::next_forward_path(
+            &mut path_stack,
+            &letter_grid,
+        );
+
+        assert_eq!(path_stack, expected_next_path);
+    }
+
+    // #[test]
+    // fn test_find_all_valid_words() {
+    //     let state = LetterGrid4x4 {
+    //         grid: [
+    //             letter_code_from_alphabet_index(0),
+    //             letter_code_from_alphabet_index(15),
+    //             letter_code_from_alphabet_index(15),
+    //             letter_code_from_alphabet_index(11),
+    //             letter_code_from_alphabet_index(25),
+    //             letter_code_from_alphabet_index(6),
+    //             letter_code_from_alphabet_index(6),
+    //             letter_code_from_alphabet_index(4),
+    //             letter_code_from_alphabet_index(4),
+    //             letter_code_from_alphabet_index(25),
+    //             letter_code_from_alphabet_index(25),
+    //             letter_code_from_alphabet_index(19),
+    //             letter_code_from_alphabet_index(3),
+    //             letter_code_from_alphabet_index(8),
+    //             letter_code_from_alphabet_index(19),
+    //             letter_code_from_alphabet_index(4),
+    //         ],
+    //     };
+
+    //     let mut dictionary = WordTrie::from_words(&[
+    //         "app",
+    //         "apple",
+    //         "let",
+    //         "egg",
+    //         "leg",
+    //         "did",
+    //         "daze",
+    //         "tide",
+    //         "lets",
+    //         "gel",
+    //     ]);
+        
+    //     let result = dictionary.find("app".as_bytes());
+    //     println!("result is: {:?}", result);
+
+    //     let mut analyst = State4x4Analyst::new();
+    //     analyst.find_all_valid_words(&state, &mut dictionary);
+
+    //     let expected_valid_words: Vec<Vec<GridCell>> = vec![
+    //         vec![0, 1, 2], // app
+    //         vec![0, 1, 2, 3, 7], // apple
+    //         vec![3, 7, 11], // let
+    //         vec![3, 7, 11, 10], // lets
+    //         vec![3, 7, 6], // leg
+    //         vec![6, 7, 3], // gel
+    //         vec![7, 6, 5], // egg
+    //     ].into_iter()
+    //         .map(|cells| {
+    //             cells.into_iter()
+    //                 .map(|i| LetterGrid4x4::to_grid_cell(i))
+    //                 .collect()
+    //         })
+    //         .collect();
+        
+    //     assert_eq!(analyst.valid_words, expected_valid_words);
+    // }
 }
