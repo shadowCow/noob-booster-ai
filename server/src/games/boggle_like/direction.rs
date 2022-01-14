@@ -14,27 +14,27 @@ pub enum Direction {
 impl Direction {
     pub fn direction_vector(direction: &Direction) -> (i8, i8) {
         match direction {
-            Direction::North => (0, 1),
-            Direction::NorthEast => (1, 1),
+            Direction::North => (0, -1),
+            Direction::NorthEast => (1, -1),
             Direction::East => (1, 0),
-            Direction::SouthEast => (1, -1),
-            Direction::South => (0, -1),
-            Direction::SouthWest => (-1, -1),
+            Direction::SouthEast => (1, 1),
+            Direction::South => (0, 1),
+            Direction::SouthWest => (-1, 1),
             Direction::West => (-1, 0),
-            Direction::NorthWest => (-1, 1),
+            Direction::NorthWest => (-1, -1),
         }
     }
 
     pub fn from_direction_vector(direction_vector: &(i8, i8)) -> Option<Direction> {
         match direction_vector {
-            (0, 1) => Some(Direction::North),
-            (1, 1) => Some(Direction::NorthEast),
+            (0, -1) => Some(Direction::North),
+            (1, -1) => Some(Direction::NorthEast),
             (1, 0) => Some(Direction::East),
-            (1, -1) => Some(Direction::SouthEast),
-            (0, -1) => Some(Direction::South),
-            (-1, -1) => Some(Direction::SouthWest),
+            (1, 1) => Some(Direction::SouthEast),
+            (0, 1) => Some(Direction::South),
+            (-1, 1) => Some(Direction::SouthWest),
             (-1, 0) => Some(Direction::West),
-            (-1, 1) => Some(Direction::NorthWest),
+            (-1, -1) => Some(Direction::NorthWest),
             (_, _) => None,
         }
     }
@@ -76,6 +76,8 @@ impl Direction {
             let mut next = Direction::next_clockwise(start_exclusive);
             while &next != end_exclusive {
                 directions.push(next);
+
+                next = Direction::next_clockwise(&next);
             }
 
             directions
@@ -119,14 +121,14 @@ mod tests {
     #[test]
     fn test_direction_vector() {
         let sut: Vec<(Direction, (i8, i8))> = vec![
-            (Direction::North, (0, 1)),
-            (Direction::NorthEast, (1, 1)),
+            (Direction::North, (0, -1)),
+            (Direction::NorthEast, (1, -1)),
             (Direction::East, (1, 0)),
-            (Direction::SouthEast, (1, -1)),
-            (Direction::South, (0, -1)),
-            (Direction::SouthWest, (-1, -1)),
+            (Direction::SouthEast, (1, 1)),
+            (Direction::South, (0, 1)),
+            (Direction::SouthWest, (-1, 1)),
             (Direction::West, (-1, 0)),
-            (Direction::NorthWest, (-1, 1)),
+            (Direction::NorthWest, (-1, -1)),
         ];
 
         for (direction, expected_vector) in sut {

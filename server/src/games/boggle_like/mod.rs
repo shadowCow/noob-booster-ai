@@ -46,26 +46,21 @@ impl LetterGrid for LetterGrid4x4 {
     }
 
     fn neighbor_in_direction(&self, cell: &GridCell, direction: Direction) -> Option<GridCell> {
-        println!("from: {:?}, towards: {:?}", cell, direction);
         let (d_col, d_row) = Direction::direction_vector(&direction);
-        println!("vector {:?}", (d_col, d_row));
+        
         let neighbor_col = cell.col as i8 + d_col;
         let neighbor_row = cell.row as i8 + d_row;
-
-        println!("neighbor cell {:?}", (neighbor_col, neighbor_row));
 
         if neighbor_col > -1 && 
            neighbor_col < 4 &&
            neighbor_row > -1 &&
            neighbor_row < 4
         {
-            println!("valid");
             Some(GridCell {
                 col: neighbor_col as usize,
                 row: neighbor_row as usize,
             })
         } else {
-            println!("invalid");
             None
         }
     }
@@ -212,7 +207,7 @@ impl State4x4Analyst {
             .map(|cell| letter_grid.get_cell_value(cell.col, cell.row))
             .collect();
         
-        println!("word for path: {:?}", word);
+        // println!("word for path: {:?}", word);
         
         dictionary.find(word.as_slice())
     }
@@ -251,7 +246,7 @@ impl State4x4Analyst {
     ) {
         let center_cell = path_stack.last().unwrap();
         let next_cell = grid.first_cw_neighbor(center_cell, Direction::North);
-        println!("next_cell {:?}", next_cell);
+        
         if !path_stack.contains(&next_cell) {
             path_stack.push(next_cell);
         }
@@ -263,9 +258,7 @@ impl State4x4Analyst {
     ) {
         let last_cell = path_stack.pop().unwrap();
 
-        if path_stack.is_empty() {
-            ()
-        } else {
+        if !path_stack.is_empty() {
             let center_cell = path_stack.last().unwrap();
             let start_direction = grid.direction_to(center_cell, &last_cell).unwrap();
             let maybe_next_cell = grid.first_cw_neighbor_between(
@@ -390,6 +383,21 @@ mod tests {
     }
 
     #[test]
+    fn test_first_cw_neighbor_between() {
+        let letter_grid = create_test_letter_grid();
+
+        let expected_neighbor = Some(GridCell { col: 2, row: 1 });
+
+        let actual_neighbor = letter_grid.first_cw_neighbor_between(
+            &GridCell { col: 3, row: 0},
+            Direction::South,
+            Direction::North,
+        );
+
+        assert_eq!(actual_neighbor, expected_neighbor);
+    }
+
+    #[test]
     fn test_first_cw_neighbor() {
         let letter_grid = create_test_letter_grid();
 
@@ -424,64 +432,92 @@ mod tests {
         assert_eq!(path_stack, expected_next_path);
     }
 
-    // #[test]
-    // fn test_find_all_valid_words() {
-    //     let state = LetterGrid4x4 {
-    //         grid: [
-    //             letter_code_from_alphabet_index(0),
-    //             letter_code_from_alphabet_index(15),
-    //             letter_code_from_alphabet_index(15),
-    //             letter_code_from_alphabet_index(11),
-    //             letter_code_from_alphabet_index(25),
-    //             letter_code_from_alphabet_index(6),
-    //             letter_code_from_alphabet_index(6),
-    //             letter_code_from_alphabet_index(4),
-    //             letter_code_from_alphabet_index(4),
-    //             letter_code_from_alphabet_index(25),
-    //             letter_code_from_alphabet_index(25),
-    //             letter_code_from_alphabet_index(19),
-    //             letter_code_from_alphabet_index(3),
-    //             letter_code_from_alphabet_index(8),
-    //             letter_code_from_alphabet_index(19),
-    //             letter_code_from_alphabet_index(4),
-    //         ],
-    //     };
+    #[test]
+    fn test_next_backtracked_path() {
+        let letter_grid = create_test_letter_grid();
 
-    //     let mut dictionary = WordTrie::from_words(&[
-    //         "app",
-    //         "apple",
-    //         "let",
-    //         "egg",
-    //         "leg",
-    //         "did",
-    //         "daze",
-    //         "tide",
-    //         "lets",
-    //         "gel",
-    //     ]);
+        let mut path_stack: Vec<GridCell> = vec![
+            GridCell { col: 0, row: 0 },
+            GridCell { col: 1, row: 0 },
+            GridCell { col: 2, row: 0 },
+            GridCell { col: 3, row: 0 },
+            GridCell { col: 3, row: 1 },
+        ];
+
+        let expected_next_path: Vec<GridCell> = vec![
+            GridCell { col: 0, row: 0 },
+            GridCell { col: 1, row: 0 },
+            GridCell { col: 2, row: 0 },
+            GridCell { col: 3, row: 0 },
+            GridCell { col: 2, row: 1 },
+        ];
+
+        State4x4Analyst::next_backtracked_path(
+            &mut path_stack,
+            &letter_grid,
+        );
+
+        assert_eq!(path_stack, expected_next_path);
+    }
+
+    #[test]
+    fn test_find_all_valid_words() {
+        let state = LetterGrid4x4 {
+            grid: [
+                letter_code_from_alphabet_index(0),
+                letter_code_from_alphabet_index(15),
+                letter_code_from_alphabet_index(15),
+                letter_code_from_alphabet_index(11),
+                letter_code_from_alphabet_index(25),
+                letter_code_from_alphabet_index(6),
+                letter_code_from_alphabet_index(6),
+                letter_code_from_alphabet_index(4),
+                letter_code_from_alphabet_index(4),
+                letter_code_from_alphabet_index(25),
+                letter_code_from_alphabet_index(25),
+                letter_code_from_alphabet_index(19),
+                letter_code_from_alphabet_index(3),
+                letter_code_from_alphabet_index(8),
+                letter_code_from_alphabet_index(19),
+                letter_code_from_alphabet_index(4),
+            ],
+        };
+
+        let mut dictionary = WordTrie::from_words(&[
+            "app",
+            "apple",
+            "let",
+            "egg",
+            "leg",
+            "did",
+            "daze",
+            "tide",
+            "lets",
+            "gel",
+        ]);
         
-    //     let result = dictionary.find("app".as_bytes());
-    //     println!("result is: {:?}", result);
+        let result = dictionary.find("app".as_bytes());
+        println!("result is: {:?}", result);
 
-    //     let mut analyst = State4x4Analyst::new();
-    //     analyst.find_all_valid_words(&state, &mut dictionary);
+        let mut analyst = State4x4Analyst::new();
+        analyst.find_all_valid_words(&state, &mut dictionary);
 
-    //     let expected_valid_words: Vec<Vec<GridCell>> = vec![
-    //         vec![0, 1, 2], // app
-    //         vec![0, 1, 2, 3, 7], // apple
-    //         vec![3, 7, 11], // let
-    //         vec![3, 7, 11, 10], // lets
-    //         vec![3, 7, 6], // leg
-    //         vec![6, 7, 3], // gel
-    //         vec![7, 6, 5], // egg
-    //     ].into_iter()
-    //         .map(|cells| {
-    //             cells.into_iter()
-    //                 .map(|i| LetterGrid4x4::to_grid_cell(i))
-    //                 .collect()
-    //         })
-    //         .collect();
+        let expected_valid_words: Vec<Vec<GridCell>> = vec![
+            vec![0, 1, 2], // app
+            vec![0, 1, 2, 3, 7], // apple
+            vec![3, 7, 11], // let
+            vec![3, 7, 11, 10], // lets
+            vec![3, 7, 6], // leg
+            vec![6, 7, 3], // gel
+            vec![7, 6, 5], // egg
+        ].into_iter()
+            .map(|cells| {
+                cells.into_iter()
+                    .map(|i| LetterGrid4x4::to_grid_cell(i))
+                    .collect()
+            })
+            .collect();
         
-    //     assert_eq!(analyst.valid_words, expected_valid_words);
-    // }
+        assert_eq!(analyst.valid_words, expected_valid_words);
+    }
 }
