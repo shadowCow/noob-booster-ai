@@ -69,19 +69,15 @@ impl Direction {
         start_exclusive: &Direction,
         end_exclusive: &Direction,
     ) -> Vec<Direction> {
-        if start_exclusive == end_exclusive {
-            vec![]
-        } else {
-            let mut directions: Vec<Direction> = vec![];
-            let mut next = Direction::next_clockwise(start_exclusive);
-            while &next != end_exclusive {
-                directions.push(next);
+        let mut directions: Vec<Direction> = vec![];
+        let mut next = Direction::next_clockwise(start_exclusive);
+        while &next != end_exclusive {
+            directions.push(next);
 
-                next = Direction::next_clockwise(&next);
-            }
-
-            directions
+            next = Direction::next_clockwise(&next);
         }
+
+        directions
     }
 
     pub fn directions_between_inclusive_cw(
