@@ -61,6 +61,16 @@ impl WordTrie {
         trie
     }
 
+    pub fn from_words_owned(words: &[String]) -> WordTrie {
+        let mut trie = WordTrie::new();
+
+        for word in words {
+            trie.insert(word);
+        }
+
+        trie
+    }
+
     // Insert a string
     pub fn insert(&mut self, word: &str) {
         let mut current_node = &mut self.root_node;
