@@ -1,7 +1,7 @@
-import { AppDependencies } from "./App";
+import { ShutTheBoxDependencies } from "./App";
 import { createGameAnalysisServiceImpl } from "./services/GameAnalysisService/GameAnalysisService.impl";
 
-export function createShutTheBoxDepedencies(): AppDependencies {
+export function createShutTheBoxDepedencies(): ShutTheBoxDependencies {
   return {
     gameAnalysisService: createGameAnalysisServiceImpl(),
   };
