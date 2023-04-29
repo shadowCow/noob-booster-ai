@@ -1,5 +1,5 @@
 import React from 'react';
-import './Dice.css';
+
 
 import {GameState, D6, nextD6} from '../GameState';
 

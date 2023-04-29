@@ -33,6 +33,7 @@ impl Responder for BestActionResponse {
 }
 
 pub async fn find_best_action(info: web::Json<BestActionRequest>, data: web::Data<ShutTheBoxAnalyst>) -> impl Responder {
+    println!("called find_best_action {:?} {:?}", info.dice_value, info.tiles_open);
     let state = State::new(info.dice_value, info.tiles_open);
     let best_action_with_value = data.find_best_action(
         &state,

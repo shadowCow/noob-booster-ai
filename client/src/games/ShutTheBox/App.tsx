@@ -1,5 +1,5 @@
 import React from 'react';
-import './App.css';
+
 import { GameAnalysisView } from './GameAnalysisView/GameAnalysisView';
 import { GameState, createGameState, Tile, D6 } from './GameState';
 import { GameView } from './GameView/GameView';

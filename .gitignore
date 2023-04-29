@@ -4,6 +4,7 @@ target/
 
 # js
 node_modules/
+dist/
 
 # IDE
 *.code-workspace

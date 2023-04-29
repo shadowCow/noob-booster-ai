@@ -1,3 +1,4 @@
+mod word;
 mod node_value_cache;
 mod outcomes;
 mod tree;

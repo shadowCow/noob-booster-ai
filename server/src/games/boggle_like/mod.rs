@@ -406,6 +406,18 @@ mod tests {
     use super::*;
 
     fn create_test_letter_grid() -> LetterGrid4x4 {
+        /*
+        0  1  2  3
+        4  5  6  7
+        8  9  10 11
+        12 13 14 15
+
+
+        A P P L
+        M G G E
+        Z Z S T
+        D I T E
+        */
         LetterGrid4x4::new([
             letter_code_from_alphabet_index(0), // a
             letter_code_from_alphabet_index(15), // p

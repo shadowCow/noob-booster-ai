@@ -1,7 +1,7 @@
 import React from 'react';
 import { Action, GameState } from '../GameState';
 import { GameAnalysisService } from '../services/GameAnalysisService/GameAnalysisService';
-import './GameAnalysisView.css';
+
 
 export type GameAnalysisViewProps = {
     gameState: GameState,

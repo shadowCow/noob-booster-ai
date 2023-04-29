@@ -1,5 +1,5 @@
 import React from 'react';
-import './Tiles.css';
+
 
 import {GameState, Tile} from '../GameState';
 

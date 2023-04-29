@@ -1,5 +1,5 @@
 import React from 'react';
-import './GameView.css';
+
 
 import { DiceView } from '../DiceView/DiceView';
 import { D6, GameState, Tile } from '../GameState';
