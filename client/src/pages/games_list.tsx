@@ -2,14 +2,17 @@ import styles from "@/styles/games_list.module.css";
 import { useState } from "react";
 import { ShutTheBox } from "../games/ShutTheBox/App";
 import { GameAnalysisService } from "../games/ShutTheBox/services/GameAnalysisService/GameAnalysisService";
+import { Splendor } from "../games/splendor/splendor";
 
-type AvailableGames = "shut_the_box";
-const games: Array<AvailableGames> = ["shut_the_box"];
+type AvailableGames = "shut_the_box" | "splendor";
+const games: Array<AvailableGames> = ["shut_the_box", "splendor"];
 
 function gameDisplayName(game: AvailableGames): string {
   switch (game) {
     case "shut_the_box":
       return "Shut the Box";
+    case "splendor":
+      return "Splendor";
     default:
       return "Unknown Game";
   }
@@ -57,6 +60,8 @@ function GameArea(props: {
           appDependencies={{ gameAnalysisService: props.gameAnalysisService }}
         />
       );
+    case "splendor":
+      return <Splendor />;
     default:
       return <div>No Game Selected</div>;
   }

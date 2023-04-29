@@ -1,0 +1,89 @@
+.game {
+}
+
+.shared_board {
+  display: flex;
+  flex-direction: column;
+}
+
+.location_tiles {
+}
+
+.location_tile {
+}
+
+.tier {
+  display: flex;
+  flex-direction: row;
+}
+
+.deck {
+  width: 7rem;
+  height: 10rem;
+}
+
+.tier_cards {
+  display: flex;
+  flex-direction: row;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+
+  width: 7rem;
+  height: 10rem;
+}
+
+.card_header {
+}
+
+.card_name {
+  font-size: 1rem;
+  text-align: center;
+}
+
+.card_avenger_symbols {
+}
+
+.card_points {
+}
+
+.card_body {
+  display: flex;
+  flex-direction: row;
+}
+
+.card_cost {
+  flex-basis: 25%;
+}
+
+.card_graphic {
+}
+
+.empty_card {
+  border: 2px solid black;
+
+  width: 7rem;
+  height: 10rem;
+}
+
+.purple {
+  background-color: purple;
+}
+
+.red {
+  background-color: red;
+}
+
+.orange {
+  background-color: orange;
+}
+
+.blue {
+  background-color: blue;
+}
+
+.yellow {
+  background-color: yellow;
+}
