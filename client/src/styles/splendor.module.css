@@ -4,6 +4,7 @@
 .shared_board {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 .location_tiles {
@@ -15,27 +16,47 @@
 .tier {
   display: flex;
   flex-direction: row;
+  gap: 20px;
 }
 
 .deck {
   width: 7rem;
   height: 10rem;
+
+  border: 2px solid black;
 }
 
 .tier_cards {
   display: flex;
   flex-direction: row;
+  gap: 10px;
 }
 
 .card {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
 
   width: 7rem;
   height: 10rem;
+
+  border: 2px solid black;
 }
 
 .card_header {
+  display: flex;
+  flex-direction: row;
+
+  justify-content: space-between;
+}
+
+.card_time_stone {
+  flex-basis: 15%;
+}
+
+.card_name_area {
+  display: flex;
+  flex-direction: column;
 }
 
 .card_name {
@@ -44,9 +65,12 @@
 }
 
 .card_avenger_symbols {
+  display: flex;
+  flex-direction: row;
 }
 
 .card_points {
+  flex-basis: 15%;
 }
 
 .card_body {

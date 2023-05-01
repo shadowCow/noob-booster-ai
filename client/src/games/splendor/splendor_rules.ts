@@ -1,54 +1,6 @@
 import { adt, assertNever } from "../../utils/adt";
 import { drawN, shuffle } from "../card_utils/card_utils";
-
-const tier1Cards: Array<Card> = [
-  {
-    name: "Sandman",
-    color: "red",
-    cost: {
-      purple: 0,
-      red: 0,
-      orange: 4,
-      blue: 0,
-      yellow: 0,
-    },
-    avengerCount: 0,
-    points: 1,
-    hasTimeStone: false,
-  },
-];
-const tier2Cards: Array<Card> = [
-  {
-    name: "Carnage",
-    color: "purple",
-    cost: {
-      purple: 0,
-      red: 6,
-      orange: 0,
-      blue: 0,
-      yellow: 0,
-    },
-    avengerCount: 0,
-    points: 3,
-    hasTimeStone: false,
-  },
-];
-const tier3Cards: Array<Card> = [
-  {
-    name: "Iron Man",
-    color: "yellow",
-    cost: {
-      purple: 1,
-      red: 1,
-      orange: 1,
-      blue: 1,
-      yellow: 1,
-    },
-    avengerCount: 2,
-    points: 3,
-    hasTimeStone: true,
-  },
-];
+import { tier1Cards, tier2Cards, tier3Cards } from "./splendor_cards";
 
 export type SplendorState = {
   board: Board;
@@ -128,6 +80,13 @@ function coloredGemCounts(): ColoredGemCounts {
 export type WildGemCount = {
   wild: number;
 };
+
+export function gemCost(cost: Partial<ColoredGemCounts>): ColoredGemCounts {
+  return {
+    ...coloredGemCounts(),
+    ...cost,
+  };
+}
 
 export type PlayerState = {
   cards: Array<Card>;

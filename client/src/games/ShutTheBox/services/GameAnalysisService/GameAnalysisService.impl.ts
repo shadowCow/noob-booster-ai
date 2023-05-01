@@ -17,7 +17,7 @@ export function createGameAnalysisServiceImpl(): GameAnalysisService {
         .then((json) => deserBestActionResponse(json))
         .catch((err) => {
           console.error(err);
-          return err;
+          return undefined;
         });
     },
   };

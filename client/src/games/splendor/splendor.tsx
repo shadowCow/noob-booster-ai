@@ -85,12 +85,15 @@ function CardView(props: { card: Card }) {
 
   return (
     <div className={styles.card}>
-      <div className={`${styles.card_header} ${styles.colorStyle}`}>
-        <p className={styles.card_name}>{props.card.name}</p>
-        <div className={styles.card_avenger_symbols}>
-          {getAvengerSymbols(props.card.avengerCount).map((a) => (
-            <p>A</p>
-          ))}
+      <div className={`${styles.card_header} ${colorStyle}`}>
+        <p className={styles.card_time_stone}></p>
+        <div className={styles.card_name_area}>
+          <p className={styles.card_name}>{props.card.name}</p>
+          <div className={styles.card_avenger_symbols}>
+            {getAvengerSymbols(props.card.avengerCount).map((a, i) => (
+              <p key={i}>A</p>
+            ))}
+          </div>
         </div>
         <p className={styles.card_points}>{props.card.points}</p>
       </div>

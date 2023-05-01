@@ -6,3 +6,8 @@ div#__next > div {
   height: 100%;
   width: 100%;
 }
+
+p {
+  margin-block-start: 0;
+  margin-block-end: 0;
+}
