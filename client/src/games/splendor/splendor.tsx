@@ -2,15 +2,19 @@ import styles from "@/styles/splendor.module.css";
 import {
   Card,
   CardTier,
+  ColoredGemCounts,
   GemColor,
   GemCounts,
   LocationTile,
+  SplendorState,
   initSplendorState,
   transition,
 } from "./splendor_rules";
 import { assertNever } from "../../utils/adt";
 import { Deck } from "../card_utils/card_utils";
 import { useReducer } from "react";
+import { totalGemCounts } from "./splendor_metrics";
+import { tier1Cards, tier2Cards, tier3Cards } from "./splendor_cards";
 
 export function Splendor() {
   const [state, dispatch] = useReducer(transition, initSplendorState());
@@ -24,6 +28,7 @@ export function Splendor() {
         tier2UpCards={state.board[1]}
         tier3UpCards={state.board[2]}
       />
+      <MetricsView state={state} />
     </div>
   );
 }
@@ -139,4 +144,46 @@ function getColorStyle(gemColor: GemColor): string {
     default:
       assertNever(gemColor);
   }
+}
+
+function MetricsView(props: { state: SplendorState }) {
+  return (
+    <div>
+      <GemCostMetricView
+        tier={3}
+        cost={totalGemCounts(onlyCards(props.state.board[2]))}
+      />
+      <GemCostMetricView
+        tier={2}
+        cost={totalGemCounts(onlyCards(props.state.board[1]))}
+      />
+      <GemCostMetricView
+        tier={1}
+        cost={totalGemCounts(onlyCards(props.state.board[0]))}
+      />
+    </div>
+  );
+}
+
+function GemCostMetricView(props: { tier: CardTier; cost: ColoredGemCounts }) {
+  return (
+    <div>
+      <p>{`Tier ${props.tier} totals:`}</p>
+      <p>{`Purple ${props.cost.purple}`}</p>
+      <p>{`Red ${props.cost.red}`}</p>
+      <p>{`Orange ${props.cost.orange}`}</p>
+      <p>{`Blue ${props.cost.blue}`}</p>
+      <p>{`Yellow ${props.cost.yellow}`}</p>
+    </div>
+  );
+}
+
+function onlyCards(slots: Array<Card | undefined>): Array<Card> {
+  return slots.reduce<Array<Card>>((acc, el) => {
+    if (el !== undefined) {
+      return [...acc, el];
+    } else {
+      return acc;
+    }
+  }, []);
 }
